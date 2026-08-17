@@ -1,0 +1,185 @@
+/* TOTAL NUMBER OF PATIENTS    */
+SELECT COUNT(DISTINCT patient_id) AS total_patients
+FROM   dbo.patients; /* BREAKDOWN OF PATIENTS BY AGE*/
+/* AGE GROUPS AND PERCENTAGE COMPOSITION OF ECAH GROUP */
+WITH     age_cte
+AS       (SELECT DATEDIFF(YEAR, date_of_birth, GETDATE()) - CASE WHEN MONTH(date_of_birth) > MONTH(GETDATE())
+                                                                      OR MONTH(date_of_birth) = MONTH(GETDATE())
+                                                                         AND DAY(date_of_birth) > DAY(GETDATE()) THEN 1 ELSE 0 END AS Age,
+                 patient_id
+          FROM   dbo.patients)
+SELECT   CASE WHEN age BETWEEN 20 AND 29 THEN '20-29' WHEN age BETWEEN 30 AND 39 THEN '30-39' WHEN age BETWEEN 40 AND 49 THEN '40-49' WHEN age BETWEEN 50 AND 59 THEN '50-59' WHEN age >= 60 THEN '60 and above' END AS age_groups,
+         COUNT(DISTINCT patient_id) AS patient_count,
+         CONCAT(CAST (COUNT(DISTINCT patient_id) * 100.0 / SUM(COUNT(DISTINCT patient_id)) OVER () AS DECIMAL (5, 2)), '%') AS percentage
+FROM     age_cte
+GROUP BY CASE WHEN age BETWEEN 20 AND 29 THEN '20-29' WHEN age BETWEEN 30 AND 39 THEN '30-39' WHEN age BETWEEN 40 AND 49 THEN '40-49' WHEN age BETWEEN 50 AND 59 THEN '50-59' WHEN age >= 60 THEN '60 and above' END;
+
+/* MINIMUM, MAXIMUM AND AVERAGE AGE*/
+SELECT AVG(DATEDIFF(YEAR, date_of_birth, GETDATE()) - CASE WHEN MONTH(date_of_birth) > MONTH(GETDATE())
+                                                                OR MONTH(date_of_birth) = MONTH(GETDATE())
+                                                                   AND DAY(date_of_birth) > DAY(GETDATE()) THEN 1 ELSE 0 END) AS avg_age,
+       MIN(DATEDIFF(YEAR, date_of_birth, GETDATE()) - CASE WHEN MONTH(date_of_birth) > MONTH(GETDATE())
+                                                                OR MONTH(date_of_birth) = MONTH(GETDATE())
+                                                                   AND DAY(date_of_birth) > DAY(GETDATE()) THEN 1 ELSE 0 END) AS min_age,
+       MAX(DATEDIFF(YEAR, date_of_birth, GETDATE()) - CASE WHEN MONTH(date_of_birth) > MONTH(GETDATE())
+                                                                OR MONTH(date_of_birth) = MONTH(GETDATE())
+                                                                   AND DAY(date_of_birth) > DAY(GETDATE()) THEN 1 ELSE 0 END) AS max_age
+FROM   dbo.patients;
+/* BREAKDOWN OF PATIENTS BY GENDER*/
+SELECT   gender,
+         COUNT(DISTINCT patient_id) AS patient_count,
+         CONCAT(CAST (COUNT(DISTINCT patient_id) * 100.0 / SUM(COUNT(DISTINCT patient_id)) OVER () AS DECIMAL (5, 2)), '%') AS percentage
+FROM     dbo.patients
+GROUP BY gender; 
+
+/* BREAKDOWN OF PATIENTS BY INSURANCE PROVIDER*/
+SELECT   insurance_provider,
+         COUNT(DISTINCT patient_id) AS patient_count,
+         ROW_NUMBER() OVER (ORDER BY COUNT(DISTINCT patient_id) DESC) AS rank
+FROM     dbo.patients
+GROUP BY insurance_provider; 
+
+/* BREAKDOWN OF PATIENTS BY REGISTRATION YEAR*/
+SELECT   YEAR(registration_date) AS year,
+         COUNT(patient_id) AS patient_count,
+         LAG(COUNT(patient_id)) OVER (ORDER BY YEAR(registration_date)) AS previous_year,
+         COUNT(patient_id) - LAG(COUNT(patient_id)) OVER (ORDER BY YEAR(registration_date)) AS previous_year_change
+FROM     dbo.patients
+GROUP BY YEAR(registration_date);
+
+/* BREAKDOWN OF PATIENTS BY REGISTRATION MONTH*/
+SELECT   FORMAT(registration_date, 'MMM-yyyy') AS month,
+         COUNT(patient_id) AS patient_count,
+         SUM(COUNT(patient_id)) OVER (ORDER BY FORMAT(registration_date, 'MMM-yyyy') ROWS BETWEEN UNBOUNDED PRECEDING AND CURRENT ROW) AS running_total
+FROM     dbo.patients
+GROUP BY FORMAT(registration_date, 'MMM-yyyy'); 
+
+/* REASON FOR HOSPITAL APPONTMENT*/
+SELECT   reason_for_visit,
+         COUNT(appointment_id) AS patient_count
+FROM     dbo.appointments
+GROUP BY reason_for_visit
+ORDER BY patient_count DESC; 
+
+/* STATUS OF APPOINTMENT*/
+SELECT   status,
+         COUNT(appointment_id) AS patient_count
+FROM     dbo.appointments
+GROUP BY status
+ORDER BY patient_count DESC; 
+
+/* DOCTOR TO BE SEEN (JOIN DOCTOR AND APPOINTMENT TABLE)*/
+WITH     doctor_appointment_cte
+AS       (SELECT   CONCAT(D.first_name, ' ', D.last_name) AS doctor_name,
+                   A.appointment_id,
+                   A.status
+          FROM     dbo.appointments AS A
+                   LEFT OUTER JOIN
+                   dbo.doctors AS D
+                   ON A.doctor_id = D.doctor_id
+          GROUP BY CONCAT(D.first_name, ' ', D.last_name), A.appointment_id, A.status)
+SELECT   doctor_name,
+         COUNT(appointment_id) AS appointment_count
+FROM     doctor_appointment_cte
+GROUP BY doctor_name; 
+
+/* DOCTORS BY CANCELLED APPOINTMENT*/
+WITH     doctor_appointment_cte
+AS       (SELECT   CONCAT(D.first_name, ' ', D.last_name) AS doctor_name,
+                   A.appointment_id,
+                   A.status
+          FROM     dbo.appointments AS A
+                   LEFT OUTER JOIN
+                   dbo.doctors AS D
+                   ON A.doctor_id = D.doctor_id
+          GROUP BY CONCAT(D.first_name, ' ', D.last_name), A.appointment_id, A.status)
+SELECT   doctor_name,
+         COUNT(appointment_id) AS appointment_count
+FROM     doctor_appointment_cte
+WHERE    status = 'cancelled'
+GROUP BY doctor_name
+ORDER BY appointment_count DESC; 
+
+/* BREAKDOWN OF PAYMENT METHOD*/
+SELECT   payment_method,
+         COUNT(patient_id) AS count,
+         CONCAT(CAST(COUNT(patient_id)*100/SUM(COUNT(patient_id)) OVER() AS DECIMAL(5,2)), '%') AS percentage
+FROM dbo.billing
+GROUP BY payment_method
+
+/*BREAKDOWN OF PAYMENT STATUS*/
+
+SELECT   payment_status,
+         COUNT(patient_id) AS count,
+         CONCAT(CAST(COUNT(patient_id)*100/SUM(COUNT(patient_id)) OVER() AS decimal(5,2)), '%') AS percentage
+         FROM     dbo.billing
+GROUP BY payment_status; 
+
+/*BREAKDOWN OF FAILED TRANSACTIONS BY PAYMENT METHOD*/
+
+SELECT   payment_method,
+         COUNT(patient_id) AS count
+FROM     dbo.billing
+WHERE    payment_status = 'failed'
+GROUP BY payment_method;
+
+/* BREAKDOWN OF AMOUNT PAID */
+SELECT 
+ROUND(AVG(amount), 2) AS avg_amount,
+ROUND(MIN(amount), 2) AS min_amount,
+ROUND(MAX(amount), 2) AS max_amount
+FROM    dbo.billing;
+
+/* AVERAGE COST PER DOCTOR AND HOSPITAL (JOINED APPOINTMENT, TREATMENT AND DOCTOR TABLE*/
+WITH cost_cte AS (
+SELECT 
+'Dr' + ' ' + CONCAT(D.first_name, ' ', D.last_name) doctor_name,
+D.specialization,
+D.hospital_branch,
+T.cost
+FROM dbo.treatments AS T
+JOIN dbo.appointments as A
+ON T.appointment_id = A.appointment_id
+JOIN dbo.doctors AS D
+ON A.doctor_id = D.doctor_id)
+
+SELECT
+doctor_name,
+specialization,
+hospital_branch,
+ROUND(AVG(cost), 2) avg_cost_per_doctor
+FROM cost_cte
+GROUP BY doctor_name,
+specialization,
+hospital_branch
+ORDER BY avg_cost_per_doctor DESC
+
+/* DURATION BETWEEN APPOINTMENT AND TREATMENT */
+SELECT 
+A.patient_id,
+A.appointment_date,
+T.treatment_date,
+DATEDIFF(DAY, appointment_date, treatment_date) treatment_delay
+FROM dbo.appointments AS A
+LEFT JOIN dbo.treatments AS T
+ON A.appointment_id = T.appointment_id
+
+/* AVERAGE COST BY TREATMENT TYPE */
+SELECT
+treatment_type,
+AVG(cost) avg_cost
+FROM 
+dbo.treatments
+GROUP BY treatment_type
+ORDER BY avg_cost
+
+
+
+
+
+
+
+
+
+
+
