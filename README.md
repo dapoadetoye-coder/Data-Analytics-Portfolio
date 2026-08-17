@@ -4,7 +4,7 @@ Below, I have broken the analysis into individual queries. For each one, I state
 
 1. What is the total number of patients
 
-2. 
+
 SELECT COUNT(DISTINCT patient_id) AS total_patients
 FROM   dbo.patients;
 
