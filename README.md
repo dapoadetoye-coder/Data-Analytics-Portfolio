@@ -3,8 +3,11 @@ For this project, I dug into a hospital's operational data using T-SQl, to see w
 Below, I have broken the analysis into individual queries. For each one, I state the question I was trying to answer, show the SQL, share the result, and explain what it means in plain terms
 
 1. What is the total number of patients
+
+2. 
 SELECT COUNT(DISTINCT patient_id) AS total_patients
 FROM   dbo.patients;
+
 | total_patients |
 | --- |
 | 50 |
@@ -12,6 +15,7 @@ FROM   dbo.patients;
 There are a total of 50 patients in the hospital
 
 2. What is the lowest age, highest age, and average age among the patients
+ 
 SELECT AVG(DATEDIFF(YEAR, date_of_birth, GETDATE()) - CASE WHEN MONTH(date_of_birth) > MONTH(GETDATE())
                                                                 OR MONTH(date_of_birth) = MONTH(GETDATE())
                                                                    AND DAY(date_of_birth) > DAY(GETDATE()) THEN 1 ELSE 0 END) AS avg_age,
@@ -21,6 +25,7 @@ SELECT AVG(DATEDIFF(YEAR, date_of_birth, GETDATE()) - CASE WHEN MONTH(date_of_bi
        MAX(DATEDIFF(YEAR, date_of_birth, GETDATE()) - CASE WHEN MONTH(date_of_birth) > MONTH(GETDATE())
                                                                 OR MONTH(date_of_birth) = MONTH(GETDATE())
                                                                    AND DAY(date_of_birth) > DAY(GETDATE()) THEN 1 ELSE 0 END) AS max_age
+   
    | avg_age | min_age | max_age |
 | --- | --- | --- |
 | 45 | 21 | 76 |
@@ -52,6 +57,7 @@ GROUP BY CASE WHEN age BETWEEN 20 AND 29 THEN '20-29' WHEN age BETWEEN 30 AND 39
 The age range 30 - 39 makes up the largest group representing 26% of the patients, followed by 60 and above which makes up 24%. 40 - 49 ism the smallest age group, making up 14% of the patient population
 
 4. What is the breakdown of the patient population by gender with percentages
+   
 SELECT   gender,
          COUNT(DISTINCT patient_id) AS patient_count,
          CONCAT(CAST (COUNT(DISTINCT patient_id) * 100.0 / SUM(COUNT(DISTINCT patient_id)) OVER () AS DECIMAL (5, 2)), '%') AS percentage
