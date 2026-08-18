@@ -155,12 +155,20 @@ The table above shows a running total of the patient by registration month. Sept
 8. What are the reasons for the Patient visits
 
 ```SQL
+SELECT
+COUNT(appointment_id) AS Total
+FROM dbo.appointments;
+
 SELECT   reason_for_visit,
          COUNT(appointment_id) AS patient_count
 FROM     dbo.appointments
 GROUP BY reason_for_visit
 ORDER BY patient_count DESC;
 ```
+| Total |
+| --- |
+| 200 |
+
 | reason_for_visit | patient_count |
 | --- | --- |
 | Checkup | 45 |
@@ -169,3 +177,50 @@ ORDER BY patient_count DESC;
 | Follow-up | 41 |
 | Emergency | 29 |
 
+There were a total of 200 appointments, 45 of them were for Checkup, Consultation, Therapy and Follow up were also common reasons for visit, with 43, 42 and 41 appointments respectively. Emergencies were the lowest with only 29 appointments.
+
+9. How many appointments ended up completed vs cancelled vs no-show vs re-scheduled
+```SQL
+SELECT   status,
+         COUNT(appointment_id) AS patient_count
+FROM     dbo.appointments
+GROUP BY status
+ORDER BY patient_count DESC;
+```
+| status | patient_count |
+| --- | --- |
+| No-show | 52 |
+| Scheduled | 51 |
+| Cancelled | 51 |
+| Completed | 46 |
+
+10. Which Doctors have the most appointments with patients
+```SQL
+WITH     doctor_appointment_cte
+AS       (SELECT   'Dr' + ' ' + CONCAT(D.first_name, ' ', D.last_name) AS doctor_name,
+                   A.appointment_id,
+                   A.status
+          FROM     dbo.appointments AS A
+                   LEFT JOIN
+                   dbo.doctors AS D
+                   ON A.doctor_id = D.doctor_id
+          GROUP BY CONCAT(D.first_name, ' ', D.last_name), A.appointment_id, A.status)
+SELECT   doctor_name,
+         COUNT(appointment_id) AS appointment_count
+FROM     doctor_appointment_cte
+GROUP BY doctor_name;
+```
+| doctor_name | appointment_count |
+| --- | --- |
+| Dr Sarah Taylor | 29 |
+| Dr David Taylor | 25 |
+| Dr Alex Davis | 24 |
+| Dr Jane Smith | 22 |
+| Dr Jane Davis | 21 |
+| Dr Linda Wilson | 19 |
+| Dr Sarah Smith | 17 |
+| Dr Linda Brown | 16 |
+| Dr David Jones | 14 |
+| Dr Robert Davis | 13 |
+
+Dr Sarah Smith had the most appointments with 29 appointments, Dr David Taylor had the second highest, while Dr Alex Davis had the third highest with 25 and 29 appointments respectively. Dr Robert Davis had the lowest number of appointments, with 13.
