@@ -195,6 +195,7 @@ ORDER BY patient_count DESC;
 | Completed | 46 |
 
 10. Which Doctors have the most appointments with patients
+(Involved Joining the Appointment and Doctors table)
 ```SQL
 WITH     doctor_appointment_cte
 AS       (SELECT   'Dr' + ' ' + CONCAT(D.first_name, ' ', D.last_name) AS doctor_name,
@@ -223,4 +224,127 @@ GROUP BY doctor_name;
 | Dr David Jones | 14 |
 | Dr Robert Davis | 13 |
 
-Dr Sarah Smith had the most appointments with 29 appointments, Dr David Taylor had the second highest, while Dr Alex Davis had the third highest with 25 and 29 appointments respectively. Dr Robert Davis had the lowest number of appointments, with 13.
+Dr Sarah Taylor had the most appointments with 29 appointments, Dr David Taylor had the second highest, while Dr Alex Davis had the third highest with 25 and 29 appointments respectively. Dr Robert Davis had the lowest number of appointments, with 13.
+
+11. Which of these Doctors have the most cancelled appointments
+```SQL
+WITH     doctor_appointment_cte
+AS       (SELECT   'Dr' + ' ' + CONCAT(D.first_name, ' ', D.last_name) AS doctor_name,
+                   A.appointment_id,
+                   A.status
+          FROM     dbo.appointments AS A
+                   LEFT OUTER JOIN
+                   dbo.doctors AS D
+                   ON A.doctor_id = D.doctor_id
+          GROUP BY CONCAT(D.first_name, ' ', D.last_name), A.appointment_id, A.status)
+SELECT   doctor_name,
+         COUNT(appointment_id) AS appointment_count
+FROM     doctor_appointment_cte
+WHERE    status = 'cancelled'
+GROUP BY doctor_name
+ORDER BY appointment_count DESC; 
+```
+| doctor_name | appointment_count |
+| --- | --- |
+| Dr Jane Davis | 8 |
+| Dr David Taylor | 7 |
+| Dr Sarah Taylor | 6 |
+| Dr Alex Davis | 6 |
+| Dr Linda Brown | 5 |
+| Dr Robert Davis | 5 |
+| Dr Sarah Smith | 4 |
+| Dr Jane Smith | 4 |
+| Dr David Jones | 3 |
+| Dr Linda Wilson | 3 |
+
+Dr Jane Davis had the most cancelled appointments with 8, Dr David Taylor comes at a close second, having 7 cancelled appointments. Dr Sarah Taylor and Alex Davis both have 6 cancelled appointments.
+At the bottom of the cancelled appointment list is Dr David Jone and Dr Linda Wilson
+
+12. What are the preferred payment methods?
+```SQL
+SELECT   payment_method,
+         COUNT(patient_id) AS count,
+         CONCAT(CAST(COUNT(patient_id)*100/SUM(COUNT(patient_id)) OVER() AS DECIMAL(5,2)), '%') AS percentage
+FROM dbo.billing
+GROUP BY payment_method
+```
+| payment_method | count | percentage |
+| --- | --- | --- |
+| Cash | 61 | 30.00% |
+| Credit Card | 75 | 37.00% |
+| Insurance | 64 | 32.00% |
+
+Credit card is the most preferred payment method, being used by 37% of the patients. Insurance in used by 32% of the patients. Cash is the least preferred payment method, utilized in only 30% of payments.
+
+13. What is the status of the payment made?
+```SQL
+SELECT   payment_status,
+         COUNT(patient_id) AS count,
+         CONCAT(CAST(COUNT(patient_id)*100/SUM(COUNT(patient_id)) OVER() AS decimal(5,2)), '%') AS percentage
+         FROM     dbo.billing
+GROUP BY payment_status;
+```
+| payment_status | count | percentage |
+| --- | --- | --- |
+| Failed | 67 | 33.00% |
+| Paid | 64 | 32.00% |
+| Pending | 69 | 34.00% |
+
+Payment status is almost evenly splited into 3 thirds, a third (33%) failed, 32% went through, while 34% showed pending.
+
+14. Which payment method has the most failed transactions
+```SQL
+SELECT   payment_method,
+         COUNT(patient_id) AS count
+FROM     dbo.billing
+WHERE    payment_status = 'failed'
+GROUP BY payment_method;
+```
+| payment_method | count |
+| --- | --- |
+| Cash | 23 |
+| Credit Card | 23 |
+| Insurance | 21 |
+
+The number of failed transactions was similar across the 3 payment methods, Cash and Credit Card had 23 while Insurance had 21.
+
+15. Which Doctor and Branch of the Hospital costs the most
+(Involved Joining the Appointment, Treatment and Doctor Tables)
+```SQL
+WITH cost_cte AS (
+SELECT 
+'Dr' + ' ' + CONCAT(D.first_name, ' ', D.last_name) doctor_name,
+D.specialization,
+D.hospital_branch,
+T.cost
+FROM dbo.treatments AS T
+JOIN dbo.appointments as A
+ON T.appointment_id = A.appointment_id
+JOIN dbo.doctors AS D
+ON A.doctor_id = D.doctor_id)
+
+SELECT
+doctor_name,
+specialization,
+hospital_branch,
+ROUND(AVG(cost), 2) avg_cost_per_doctor
+FROM cost_cte
+GROUP BY doctor_name,
+specialization,
+hospital_branch
+ORDER BY avg_cost_per_doctor DESC
+```
+| doctor_name | specialization | hospital_branch | avg_cost_per_doctor |
+| --- | --- | --- | --- |
+| Dr Linda Brown | Dermatology | Westside Clinic | 3339.21 |
+| Dr Robert Davis | Oncology | Westside Clinic | 3089.73 |
+| Dr Alex Davis | Pediatrics | Central Hospital | 2899.42 |
+| Dr Sarah Taylor | Dermatology | Central Hospital | 2851.6 |
+| Dr Jane Davis | Pediatrics | Eastside Clinic | 2847.78 |
+| Dr David Jones | Pediatrics | Central Hospital | 2808.28 |
+| Dr David Taylor | Dermatology | Westside Clinic | 2663.42 |
+| Dr Linda Wilson | Oncology | Eastside Clinic | 2601.91 |
+| Dr Jane Smith | Pediatrics | Eastside Clinic | 2399.61 |
+| Dr Sarah Smith | Pediatrics | Central Hospital | 2202.41 |
+
+Dr Linda Brown a Dermatologist at Westside clinic, Her appointment costs the most at 3,339.21, Dr Robert Davis at the same hospital costs 3089.73. The cheapest service can be found at Central Hospital with Dr Sarah Smith who is a Pediatrician and whose appointment costs 2202.42
