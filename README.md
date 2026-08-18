@@ -5,7 +5,7 @@ Below, I have broken the analysis into individual queries. For each one, I state
 1. What is the total number of patients
 
 
-```sql
+```SQL
 SELECT COUNT(DISTINCT patient_id) AS total_patients
 FROM   dbo.patients;
 ```
@@ -17,7 +17,7 @@ There are a total of 50 patients in the hospital
 
 2. What is the lowest age, highest age, and average age among the patients
  
-```sql
+```SQL
 SELECT AVG(DATEDIFF(YEAR, date_of_birth, GETDATE()) - CASE WHEN MONTH(date_of_birth) > MONTH(GETDATE())
                                                                 OR MONTH(date_of_birth) = MONTH(GETDATE())
                                                                    AND DAY(date_of_birth) > DAY(GETDATE()) THEN 1 ELSE 0 END) AS avg_age,
@@ -37,7 +37,7 @@ The youngest patient in the hospital is 21 years old, while the oldest is 76 yea
 
 3. Which age ranges do the patients fit into and what are the percentages
 
-```sql
+```SQL
 WITH     age_cte
 AS       (SELECT DATEDIFF(YEAR, date_of_birth, GETDATE()) - CASE WHEN MONTH(date_of_birth) > MONTH(GETDATE())
                                                                       OR MONTH(date_of_birth) = MONTH(GETDATE())
@@ -62,7 +62,7 @@ The age range 30 - 39 makes up the largest group representing 26% of the patient
 
 4. What is the breakdown of the patient population by gender with percentages
    
-```sql
+```SQL
 SELECT   gender,
          COUNT(DISTINCT patient_id) AS patient_count,
          CONCAT(CAST (COUNT(DISTINCT patient_id) * 100.0 / SUM(COUNT(DISTINCT patient_id)) OVER () AS DECIMAL (5, 2)), '%') AS percentage
@@ -77,7 +77,7 @@ GROUP BY gender;
 Males make up the majority of the patient population at 62%, while Females constitute 38%
 
 5. Rank the Insurance providers in Descending Order
-6. ```sql
+```SQL
    SELECT   insurance_provider,
          COUNT(DISTINCT patient_id) AS patient_count,
          ROW_NUMBER() OVER (ORDER BY COUNT(DISTINCT patient_id) DESC) AS rank
@@ -91,3 +91,81 @@ GROUP BY insurance_provider;
 | WellnessCorp | 16 | 2 |
 | PulseSecure | 10 | 3 |
 | HealthIndia | 6 | 4 |
+
+Med care plus is the most popular Insurance provider, Providing insurance coverage for 18 of the 50 patients, WelnessCorp comes at a close second with 16 patients, HealthIndia covers only 6 patients
+
+6. How many patients registered each year, and what is the year over year change in registrations
+```SQL
+SELECT   YEAR(registration_date) AS year,
+         COUNT(patient_id) AS patient_count,
+         LAG(COUNT(patient_id)) OVER (ORDER BY YEAR(registration_date)) AS previous_year,
+         COUNT(patient_id) - LAG(COUNT(patient_id)) OVER (ORDER BY YEAR(registration_date)) AS previous_year_change
+FROM     dbo.patients
+GROUP BY YEAR(registration_date);
+```
+| year | patient_count | previous_year | previous_year_change |
+| --- | --- | --- | --- |
+| 2021 | 21 | NULL | NULL |
+| 2022 | 17 | 21 | -4 |
+| 2023 | 12 | 17 | -5 |
+
+Patient registration has been on a downward trend, It started at 21 patients registering in the year 2021, followed by 17 in 2022, a decline by 4 patients. 12 patients registered in 2023, which is a reduction by 5 patients compared to the previous year.
+
+7. What is the monthly trend in patient registrations and what is the cumulative(running) total of patients registered over time
+
+```SQL
+SELECT   FORMAT(registration_date, 'MMM-yyyy') AS month,
+         COUNT(patient_id) AS patient_count,
+         SUM(COUNT(patient_id)) OVER (ORDER BY MIN(registration_date) ROWS BETWEEN UNBOUNDED PRECEDING AND CURRENT ROW) AS running_total
+FROM     dbo.patients
+GROUP BY FORMAT(registration_date, 'MMM-yyyy')
+ORDER BY MIN(registration_date);
+```
+| month | patient_count | running_total |
+| --- | --- | --- |
+| Jan-2021 | 1 | 1 |
+| Mar-2021 | 2 | 3 |
+| Apr-2021 | 1 | 4 |
+| May-2021 | 3 | 7 |
+| Jul-2021 | 2 | 9 |
+| Aug-2021 | 2 | 11 |
+| Sep-2021 | 5 | 16 |
+| Oct-2021 | 2 | 18 |
+| Dec-2021 | 3 | 21 |
+| Jan-2022 | 2 | 23 |
+| Feb-2022 | 1 | 24 |
+| Mar-2022 | 1 | 25 |
+| Apr-2022 | 1 | 26 |
+| May-2022 | 1 | 27 |
+| Jun-2022 | 2 | 29 |
+| Jul-2022 | 2 | 31 |
+| Aug-2022 | 1 | 32 |
+| Sep-2022 | 4 | 36 |
+| Oct-2022 | 2 | 38 |
+| Jan-2023 | 1 | 39 |
+| Apr-2023 | 3 | 42 |
+| May-2023 | 1 | 43 |
+| Jun-2023 | 4 | 47 |
+| Jul-2023 | 1 | 48 |
+| Sep-2023 | 1 | 49 |
+| Dec-2023 | 1 | 50 |
+
+The table above shows a running total of the patient by registration month. September 2021 had the highest number of registrations with 5 new patients, September of 2022 had the second highest with 4 new patients. However, September of 2023 did not follow this pattern, having only 1 new registration.
+
+8. What are the reasons for the Patient visits
+
+```SQL
+SELECT   reason_for_visit,
+         COUNT(appointment_id) AS patient_count
+FROM     dbo.appointments
+GROUP BY reason_for_visit
+ORDER BY patient_count DESC;
+```
+| reason_for_visit | patient_count |
+| --- | --- |
+| Checkup | 45 |
+| Consultation | 43 |
+| Therapy | 42 |
+| Follow-up | 41 |
+| Emergency | 29 |
+
