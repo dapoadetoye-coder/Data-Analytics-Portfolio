@@ -5,9 +5,10 @@ Below, I have broken the analysis into individual queries. For each one, I state
 1. What is the total number of patients
 
 
+```sql
 SELECT COUNT(DISTINCT patient_id) AS total_patients
 FROM   dbo.patients;
-
+```
 | total_patients |
 | --- |
 | 50 |
@@ -16,6 +17,7 @@ There are a total of 50 patients in the hospital
 
 2. What is the lowest age, highest age, and average age among the patients
  
+```sql
 SELECT AVG(DATEDIFF(YEAR, date_of_birth, GETDATE()) - CASE WHEN MONTH(date_of_birth) > MONTH(GETDATE())
                                                                 OR MONTH(date_of_birth) = MONTH(GETDATE())
                                                                    AND DAY(date_of_birth) > DAY(GETDATE()) THEN 1 ELSE 0 END) AS avg_age,
@@ -25,6 +27,7 @@ SELECT AVG(DATEDIFF(YEAR, date_of_birth, GETDATE()) - CASE WHEN MONTH(date_of_bi
        MAX(DATEDIFF(YEAR, date_of_birth, GETDATE()) - CASE WHEN MONTH(date_of_birth) > MONTH(GETDATE())
                                                                 OR MONTH(date_of_birth) = MONTH(GETDATE())
                                                                    AND DAY(date_of_birth) > DAY(GETDATE()) THEN 1 ELSE 0 END) AS max_age
+```
    
    | avg_age | min_age | max_age |
 | --- | --- | --- |
@@ -34,6 +37,7 @@ The youngest patient in the hospital is 21 years old, while the oldest is 76 yea
 
 3. Which age ranges do the patients fit into and what are the percentages
 
+```sql
 WITH     age_cte
 AS       (SELECT DATEDIFF(YEAR, date_of_birth, GETDATE()) - CASE WHEN MONTH(date_of_birth) > MONTH(GETDATE())
                                                                       OR MONTH(date_of_birth) = MONTH(GETDATE())
@@ -45,7 +49,7 @@ SELECT   CASE WHEN age BETWEEN 20 AND 29 THEN '20-29' WHEN age BETWEEN 30 AND 39
          CONCAT(CAST (COUNT(DISTINCT patient_id) * 100.0 / SUM(COUNT(DISTINCT patient_id)) OVER () AS DECIMAL (5, 2)), '%') AS percentage
 FROM     age_cte
 GROUP BY CASE WHEN age BETWEEN 20 AND 29 THEN '20-29' WHEN age BETWEEN 30 AND 39 THEN '30-39' WHEN age BETWEEN 40 AND 49 THEN '40-49' WHEN age BETWEEN 50 AND 59 THEN '50-59' WHEN age >= 60 THEN '60 and above' END;
-
+```
 | age_groups | patient_count | percentage |
 | --- | --- | --- |
 | 20-29 | 9 | 18.00% |
@@ -58,15 +62,32 @@ The age range 30 - 39 makes up the largest group representing 26% of the patient
 
 4. What is the breakdown of the patient population by gender with percentages
    
+```sql
 SELECT   gender,
          COUNT(DISTINCT patient_id) AS patient_count,
          CONCAT(CAST (COUNT(DISTINCT patient_id) * 100.0 / SUM(COUNT(DISTINCT patient_id)) OVER () AS DECIMAL (5, 2)), '%') AS percentage
 FROM     dbo.patients
 GROUP BY gender;
-
+```
 | gender | patient_count | percentage |
 | --- | --- | --- |
 | F | 19 | 38.00% |
 | M | 31 | 62.00% |
 
 Males make up the majority of the patient population at 62%, while Females constitute 38%
+
+5. Rank the Insurance providers in Descending Order
+6. ```sql
+   SELECT   insurance_provider,
+         COUNT(DISTINCT patient_id) AS patient_count,
+         ROW_NUMBER() OVER (ORDER BY COUNT(DISTINCT patient_id) DESC) AS rank
+FROM     dbo.patients
+GROUP BY insurance_provider;
+```
+
+| insurance_provider | patient_count | rank |
+| --- | --- | --- |
+| MedCare Plus | 18 | 1 |
+| WellnessCorp | 16 | 2 |
+| PulseSecure | 10 | 3 |
+| HealthIndia | 6 | 4 |
