@@ -308,7 +308,22 @@ GROUP BY payment_method;
 
 The number of failed transactions was similar across the 3 payment methods, Cash and Credit Card had 23 while Insurance had 21.
 
-15. Which Doctor and Branch of the Hospital costs the most
+15. What is Lowest, Highest and Average amount billed to the patients
+```SQL
+SELECT 
+ROUND(AVG(amount), 2) AS avg_amount,
+ROUND(MIN(amount), 2) AS min_amount,
+ROUND(MAX(amount), 2) AS max_amount
+FROM    dbo.billing;
+```
+
+| avg_amount | min_amount | max_amount |
+| --- | --- | --- |
+| 2756.25 | 534.03 | 4973.63 |
+
+The average amount billed is 2,756.25. The highest amount is 4973.63 while the lowest is 534.03
+
+17. Which Doctor and Branch of the Hospital costs the most
 (Involved Joining the Appointment, Treatment and Doctor Tables)
 ```SQL
 WITH cost_cte AS (
@@ -348,3 +363,52 @@ ORDER BY avg_cost_per_doctor DESC
 | Dr Sarah Smith | Pediatrics | Central Hospital | 2202.41 |
 
 Dr Linda Brown a Dermatologist at Westside clinic, Her appointment costs the most at 3,339.21, Dr Robert Davis at the same hospital costs 3089.73. The cheapest service can be found at Central Hospital with Dr Sarah Smith who is a Pediatrician and whose appointment costs 2202.42
+
+18. What is the average cost of treatment based on the treatment type
+```SQL
+SELECT
+treatment_type,
+AVG(cost) avg_cost
+FROM 
+dbo.treatments
+GROUP BY treatment_type
+ORDER BY avg_cost DESC
+```
+| treatment_type | avg_cost |
+| --- | --- |
+| MRI | 3224.95 |
+| Physiotherapy | 2761.61 |
+| X-Ray | 2698.87 |
+| Chemotherapy | 2629.71 |
+| ECG | 2532.22 |
+
+The most expensive treatment type is the MRI, which costs on an average, 3224.95, followed by Physiotherapy which costs 2761.61. ECG is the cheapest treatment type, with the average cost being 2532.22
+
+20. What is the duration between appointment day and treatment day (treatment delay)
+```SQL
+SELECT TOP 10
+A.patient_id,
+A.appointment_date,
+T.treatment_date,
+DATEDIFF(DAY, appointment_date, treatment_date) treatment_delay
+FROM dbo.appointments AS A
+LEFT JOIN dbo.treatments AS T
+ON A.appointment_id = T.appointment_id
+ORDER BY treatment_delay DESC
+```
+
+| patient_id | appointment_date | treatment_date | treatment_delay |
+| --- | --- | --- | --- |
+| 22.00 | 2023-11-12 | 2023-11-12 | 0 |
+| 5.00 | 2023-01-13 | 2023-01-13 | 0 |
+| 39.00 | 2023-03-05 | 2023-03-05 | 0 |
+| 16.00 | 2023-05-24 | 2023-05-24 | 0 |
+| 1.00 | 2023-04-09 | 2023-04-09 | 0 |
+| 45.00 | 2023-06-19 | 2023-06-19 | 0 |
+| 40.00 | 2023-07-06 | 2023-07-06 | 0 |
+| 25.00 | 2023-09-01 | 2023-09-01 | 0 |
+| 48.00 | 2023-06-28 | 2023-06-28 | 0 |
+| 32.00 | 2023-06-09 | 2023-06-09 | 0 |
+
+There is no treatment delay for any patient. All patients were treated on their appointment dates. 
+Note: Top 10 was shown to prevent an ambiguous table when there is no treatment delay in any patient
